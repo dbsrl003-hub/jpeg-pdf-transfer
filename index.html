@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>문서 스튜디오 — PDF & 이미지 도구</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Typography Fonts: Noto Serif KR & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif+KR:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Client-side Processing Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        parchment: '#fefffc',
+                        paper: '#ffffff',
+                        linen: '#f9faf7',
+                        ink: '#171717',
+                        graphite: '#2c2c2c',
+                        charcoal: '#444141',
+                        ash: '#646464',
+                        fog: '#b4b8b4',
+                        mist: '#dee2de',
+                        twilight: '#282834',
+                        dusk: '#1f1f29',
+                        'signal-blue': '#41a1cf',
+                        cerulean: '#0081c0',
+                    },
+                    fontFamily: {
+                        serif: ['Noto Serif KR', 'serif'],
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'subtle': 'rgba(0, 0, 0, 0.08) 0px 1px 1px 0px, rgba(0, 0, 0, 0.08) 0px 4px 5px 0px',
+                        'diagram': 'rgba(0, 0, 0, 0.05) 0px 1px 8px 0px',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #fefffc;
+            color: #444141;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .font-editorial {
+            font-family: 'Noto Serif KR', serif;
+            font-weight: 500;
+            letter-spacing: -0.02em;
+        }
+
+        .drag-active {
+            border-color: #41a1cf !important;
+            background-color: #f9faf7 !important;
+        }
+
+        .paper-input {
+            background-color: #f9faf7;
+            border: none;
+            border-bottom: 1px solid #444141;
+            border-radius: 0px;
+            color: #444141;
+            padding: 8px 12px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .paper-input:focus {
+            border-bottom-color: #41a1cf;
+        }
+
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: #fefffc; }
+        ::-webkit-scrollbar-thumb { background: #dee2de; border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: #b4b8b4; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-slate-200">
+
+    <!-- Top Floating Pill Navigation -->
+    <header class="sticky top-6 z-40 px-4 mb-8 flex justify-center">
+        <nav class="bg-white/80 backdrop-blur-md border border-twilight/20 rounded-full px-5 py-2.5 flex items-center gap-6 shadow-sm max-w-3xl w-full justify-between">
+            <div class="flex items-center gap-2.5">
+                <span class="w-2 h-2 rounded-full bg-signal-blue inline-block"></span>
+                <span class="font-editorial text-lg text-graphite tracking-tight">문서 스튜디오</span>
+            </div>
+            
+            <div class="hidden sm:flex items-center gap-1 text-xs font-medium text-charcoal">
+                <button onclick="switchTab('img2pdf')" id="nav-img2pdf" class="px-3 py-1.5 rounded-full transition hover:text-ink">이미지 ➔ PDF</button>
+                <button onclick="switchTab('pdf2img')" id="nav-pdf2img" class="px-3 py-1.5 rounded-full transition hover:text-ink">PDF ➔ 이미지</button>
+                <button onclick="switchTab('merge')" id="nav-merge" class="px-3 py-1.5 rounded-full transition hover:text-ink">PDF 병합</button>
+                <button onclick="switchTab('split')" id="nav-split" class="px-3 py-1.5 rounded-full transition hover:text-ink">PDF 분할</button>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span class="text-[11px] text-ash tracking-tight border border-mist px-2.5 py-1 rounded-full bg-linen">안전한 로컬 변환</span>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-5xl mx-auto px-4 sm:px-6 w-full flex-grow space-y-8 pb-16">
+        
+        <!-- Header Title Section (Editorial Style) -->
+        <section class="text-center space-y-3 pt-2 pb-4">
+            <h1 id="page-title" class="font-editorial text-3xl sm:text-4xl text-graphite leading-tight">
+                쉬운 문서 변환 도구
+            </h1>
+            <p id="page-desc" class="text-xs sm:text-sm text-ash max-w-lg mx-auto font-normal leading-relaxed">
+                서버 전송 없이 브라우저 내에서 안전하고 빠르게 처리됩니다.
+            </p>
+        </section>
+
+        <!-- Mobile Navigation Selector -->
+        <div class="sm:hidden flex justify-center">
+            <select onchange="switchTab(this.value)" class="bg-paper border border-mist text-xs text-charcoal px-4 py-2.5 rounded-lg font-medium outline-none">
+                <option value="img2pdf">이미지 ➔ PDF 변환</option>
+                <option value="pdf2img">PDF ➔ 이미지 변환</option>
+                <option value="merge">PDF 파일 병합</option>
+                <option value="split">PDF 페이지 분할</option>
+            </select>
+        </div>
+
+        <!-- ================= TOOL 1: IMAGE TO PDF ================= -->
+        <section id="section-img2pdf" class="tool-section space-y-6">
+            <div id="img-dropzone" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
+                <input type="file" id="img-input" multiple accept="image/jpeg, image/png, image/webp" class="hidden" onchange="handleImageSelect(event)">
+                <div class="space-y-3 pointer-events-none">
+                    <div class="w-10 h-10 border border-mist rounded-full flex items-center justify-center mx-auto bg-linen group-hover:border-signal-blue transition">
+                        <i data-lucide="image" class="w-5 h-5 text-ash group-hover:text-signal-blue"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-graphite">이미지 파일 추가</p>
+                        <p class="text-xs text-ash mt-1">JPG, PNG, WebP 파일을 이곳에 끌어다 놓으세요</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div id="img-controls" class="hidden bg-paper p-6 rounded-xl border border-mist shadow-subtle space-y-5">
+                <div class="flex items-center justify-between border-b border-mist pb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-graphite tracking-wider">선택된 이미지</span>
+                        <span id="img-count-badge" class="text-[11px] bg-linen text-ash border border-mist px-2 py-0.5 rounded-md font-medium">0장</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="document.getElementById('img-input').click()" class="text-xs border border-twilight text-twilight px-3 py-1.5 rounded-md font-medium hover:bg-linen transition flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> 이미지 추가
+                        </button>
+                        <button onclick="clearAllImages()" class="text-xs text-ash hover:text-ink transition">전체 삭제</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+                    <div>
+                        <label class="block text-ash mb-1.5 font-medium">용지 크기</label>
+                        <select id="pdf-size" class="w-full bg-linen border border-mist rounded-md p-2 text-charcoal outline-none">
+                            <option value="a4">A4 (기본)</option>
+                            <option value="letter">Letter</option>
+                            <option value="fit">이미지 원본 크기 맞춤</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-ash mb-1.5 font-medium">페이지 방향</label>
+                        <select id="pdf-orientation" class="w-full bg-linen border border-mist rounded-md p-2 text-charcoal outline-none">
+                            <option value="auto">자동 감지</option>
+                            <option value="portrait">세로</option>
+                            <option value="landscape">가로</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-ash mb-1.5 font-medium">여백 설정</label>
+                        <select id="pdf-margin" class="w-full bg-linen border border-mist rounded-md p-2 text-charcoal outline-none">
+                            <option value="0">여백 없음</option>
+                            <option value="10">여백 10mm</option>
+                            <option value="20">여백 20mm</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Previews -->
+            <div id="img-preview-container" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4"></div>
+
+            <!-- Action CTA -->
+            <div id="img-action-bar" class="hidden flex justify-end pt-2">
+                <button onclick="generatePDF()" class="border border-signal-blue text-signal-blue hover:bg-signal-blue/5 text-sm font-medium px-6 py-2.5 rounded-lg transition flex items-center gap-2">
+                    <span>PDF 문서 만들기</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= TOOL 2: PDF TO IMAGE ================= -->
+        <section id="section-pdf2img" class="tool-section hidden space-y-6">
+            <div id="pdf-dropzone" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
+                <input type="file" id="pdf-input" accept="application/pdf" class="hidden" onchange="handlePdfSelect(event)">
+                <div class="space-y-3 pointer-events-none">
+                    <div class="w-10 h-10 border border-mist rounded-full flex items-center justify-center mx-auto bg-linen group-hover:border-signal-blue transition">
+                        <i data-lucide="file-text" class="w-5 h-5 text-ash group-hover:text-signal-blue"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-graphite">PDF 파일 선택</p>
+                        <p class="text-xs text-ash mt-1">각 페이지를 이미지(JPG/PNG)로 변환합니다</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div id="pdf-controls" class="hidden bg-paper p-6 rounded-xl border border-mist shadow-subtle space-y-5">
+                <div class="flex items-center justify-between border-b border-mist pb-4">
+                    <div class="flex items-center gap-3">
+                        <span id="pdf-file-name" class="text-sm font-semibold text-graphite truncate max-w-[280px]">문서.pdf</span>
+                        <span id="pdf-page-count-badge" class="text-[11px] bg-linen text-ash border border-mist px-2.5 py-0.5 rounded-md font-medium">0 페이지</span>
+                    </div>
+                    <button onclick="clearPdf()" class="text-xs text-ash hover:text-ink transition">다른 파일 선택</button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                    <div>
+                        <label class="block text-ash mb-1.5 font-medium">저장할 이미지 형식</label>
+                        <div class="flex items-center gap-6 pt-1">
+                            <label class="flex items-center gap-2 cursor-pointer text-charcoal">
+                                <input type="radio" name="export-format" value="jpeg" checked class="accent-signal-blue" onchange="reRenderPdf()">
+                                <span>JPG</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-charcoal">
+                                <input type="radio" name="export-format" value="png" class="accent-signal-blue" onchange="reRenderPdf()">
+                                <span>PNG</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-ash mb-1.5 font-medium">화질 설정</label>
+                        <select id="export-scale" onchange="reRenderPdf()" class="w-full bg-linen border border-mist rounded-md p-2 text-charcoal outline-none">
+                            <option value="1.0">보통 화질 (1.0x)</option>
+                            <option value="2.0" selected>고화질 (2.0x 권장)</option>
+                            <option value="3.0">초고화질 (3.0x)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progress Loader -->
+            <div id="pdf-loading" class="hidden bg-paper p-8 rounded-xl border border-mist text-center space-y-3">
+                <div class="inline-block animate-spin text-ash">
+                    <i data-lucide="loader-2" class="w-6 h-6"></i>
+                </div>
+                <p id="pdf-loading-text" class="text-xs font-medium text-graphite">이미지를 추출하는 중입니다...</p>
+            </div>
+
+            <!-- Page Previews Grid -->
+            <div id="pdf-preview-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+
+            <!-- Action Bar -->
+            <div id="pdf-action-bar" class="hidden flex justify-end">
+                <button onclick="downloadAllPdfImagesAsZip()" class="border border-signal-blue text-signal-blue hover:bg-signal-blue/5 text-sm font-medium px-6 py-2.5 rounded-lg transition flex items-center gap-2">
+                    <i data-lucide="archive" class="w-4 h-4"></i>
+                    <span>전체 이미지 ZIP 다운로드</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= TOOL 3: MERGE PDFS ================= -->
+        <section id="section-merge" class="tool-section hidden space-y-6">
+            <div id="merge-dropzone" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
+                <input type="file" id="merge-input" multiple accept="application/pdf" class="hidden" onchange="handleMergeSelect(event)">
+                <div class="space-y-3 pointer-events-none">
+                    <div class="w-10 h-10 border border-mist rounded-full flex items-center justify-center mx-auto bg-linen group-hover:border-signal-blue transition">
+                        <i data-lucide="layers" class="w-5 h-5 text-ash group-hover:text-signal-blue"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-graphite">병합할 PDF 파일 선택</p>
+                        <p class="text-xs text-ash mt-1">여러 PDF 파일을 하나로 합칩니다</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="merge-controls" class="hidden bg-paper p-6 rounded-xl border border-mist shadow-subtle space-y-4">
+                <div class="flex items-center justify-between border-b border-mist pb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-graphite tracking-wider">파일 목록</span>
+                        <span id="merge-count-badge" class="text-[11px] bg-linen text-ash border border-mist px-2 py-0.5 rounded-md font-medium">0개</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="document.getElementById('merge-input').click()" class="text-xs border border-twilight text-twilight px-3 py-1.5 rounded-md font-medium hover:bg-linen transition flex items-center gap-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> PDF 추가
+                        </button>
+                        <button onclick="clearMergeList()" class="text-xs text-ash hover:text-ink transition">전체 삭제</button>
+                    </div>
+                </div>
+
+                <div id="merge-list" class="space-y-2"></div>
+            </div>
+
+            <div id="merge-action-bar" class="hidden flex justify-end">
+                <button onclick="executePdfMerge()" class="border border-signal-blue text-signal-blue hover:bg-signal-blue/5 text-sm font-medium px-6 py-2.5 rounded-lg transition flex items-center gap-2">
+                    <i data-lucide="combine" class="w-4 h-4"></i>
+                    <span>PDF 병합하기</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ================= TOOL 4: SPLIT PDF ================= -->
+        <section id="section-split" class="tool-section hidden space-y-6">
+            <div id="split-dropzone" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
+                <input type="file" id="split-input" accept="application/pdf" class="hidden" onchange="handleSplitSelect(event)">
+                <div class="space-y-3 pointer-events-none">
+                    <div class="w-10 h-10 border border-mist rounded-full flex items-center justify-center mx-auto bg-linen group-hover:border-signal-blue transition">
+                        <i data-lucide="scissors" class="w-5 h-5 text-ash group-hover:text-signal-blue"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-graphite">분할할 PDF 파일 선택</p>
+                        <p class="text-xs text-ash mt-1">원하는 페이지를 추출하거나 각각 나눕니다</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="split-controls" class="hidden bg-paper p-6 rounded-xl border border-mist shadow-subtle space-y-5">
+                <div class="flex items-center justify-between border-b border-mist pb-4">
+                    <div>
+                        <span id="split-file-name" class="text-sm font-semibold text-graphite">문서.pdf</span>
+                        <span id="split-total-badge" class="ml-2 text-[11px] bg-linen text-ash border border-mist px-2.5 py-0.5 rounded-md font-medium">총 0페이지</span>
+                    </div>
+                    <button onclick="clearSplit()" class="text-xs text-ash hover:text-ink transition">다른 파일 선택</button>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="flex items-center gap-6 text-xs">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="split-mode" value="range" checked onchange="toggleSplitMode()" class="accent-signal-blue">
+                            <span class="font-medium text-charcoal">특정 페이지 지정 추출</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="split-mode" value="all" onchange="toggleSplitMode()" class="accent-signal-blue">
+                            <span class="font-medium text-charcoal">모든 페이지 각각 분할</span>
+                        </label>
+                    </div>
+
+                    <div id="split-range-box" class="space-y-2">
+                        <label class="block text-xs text-ash">페이지 번호 입력 (예: 1-3, 5, 7)</label>
+                        <input type="text" id="split-range-input" placeholder="예: 1-3, 5" class="paper-input w-full text-xs font-sans">
+                    </div>
+                </div>
+            </div>
+
+            <div id="split-action-bar" class="hidden flex justify-end">
+                <button onclick="executePdfSplit()" class="border border-signal-blue text-signal-blue hover:bg-signal-blue/5 text-sm font-medium px-6 py-2.5 rounded-lg transition flex items-center gap-2">
+                    <i data-lucide="download" class="w-4 h-4"></i>
+                    <span>분할 파일 다운로드</span>
+                </button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer Colophon Style -->
+    <footer class="border-t border-mist bg-paper py-8 text-center text-xs text-ash space-y-2">
+        <div class="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <span class="font-editorial text-base text-graphite">문서 스튜디오</span>
+            <p>서버 저장 없이 브라우저 메모리에서 안전하게 처리됩니다.</p>
+        </div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2"></div>
+
+    <script>
+        // JS Switcher Update for Korean Headings
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tool-section').forEach(sec => sec.classList.add('hidden'));
+            document.getElementById(`section-${tab}`).classList.remove('hidden');
+
+            const titles = {
+                'img2pdf': '이미지를 PDF로 변환',
+                'pdf2img': 'PDF에서 이미지 추출',
+                'merge': '여러 PDF 하나로 합치기',
+                'split': 'PDF 페이지 나누기'
+            };
+            const descs = {
+                'img2pdf': '여러 이미지를 원하는 순서대로 배치하여 하나의 PDF로 결합합니다.',
+                'pdf2img': 'PDF의 각 페이지를 고화질 JPG 또는 PNG 이미지로 변환합니다.',
+                'merge': '여러 개의 PDF 문서를 하나의 완성된 파일로 병합합니다.',
+                'split': '원하는 페이지 범위만 선택해 추출하거나 개별 파일로 나눕니다.'
+            };
+
+            document.getElementById('page-title').innerText = titles[tab];
+            document.getElementById('page-desc').innerText = descs[tab];
+
+            updateNavUI();
+        }
+
+        function updateNavUI() {
+            const tabs = ['img2pdf', 'pdf2img', 'merge', 'split'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`nav-${t}`);
+                if (!btn) return;
+                if (t === currentTab) {
+                    btn.className = "px-3 py-1.5 rounded-full bg-twilight text-paper font-medium text-xs shadow-sm transition";
+                } else {
+                    btn.className = "px-3 py-1.5 rounded-full text-ash hover:text-ink font-medium text-xs transition";
+                }
+            });
+        }
+
+        // Generic Dropzone Setup
+        function setupDropzone(id, callback) {
+            const el = document.getElementById(id);
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+                el.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
+            });
+            ['dragenter', 'dragover'].forEach(evt => el.addEventListener(evt, () => el.classList.add('drag-active')));
+            ['dragleave', 'drop'].forEach(evt => el.addEventListener(evt, () => el.classList.remove('drag-active')));
+            el.addEventListener('drop', e => callback(e.dataTransfer.files));
+            el.addEventListener('click', () => el.querySelector('input[type="file"]')?.click());
+        }
+
+        /* -----------------------------------------------------------------
+           1. IMAGE TO PDF
+        ----------------------------------------------------------------- */
+        function handleImageSelect(e) { handleImageFiles(e.target.files); e.target.value = ''; }
+        function handleImageFiles(files) {
+            const valid = Array.from(files).filter(f => f.type.startsWith('image/'));
+            if (!valid.length) return showToast('이미지 파일(JPG, PNG, WebP)을 선택하세요.', 'error');
+
+            let count = 0;
+            valid.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    selectedImages.push({
+                        id: Math.random().toString(36).substring(2, 9),
+                        src: e.target.result,
+                        name: file.name
+                    });
+                    count++;
+                    if (count === valid.length) updateImageUI();
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function updateImageUI() {
+            const container = document.getElementById('img-preview-container');
+            const controls = document.getElementById('img-controls');
+            const actionBar = document.getElementById('img-action-bar');
+            const badge = document.getElementById('img-count-badge');
+
+            if (!selectedImages.length) {
+                controls.classList.add('hidden');
+                actionBar.classList.add('hidden');
+                container.innerHTML = '';
+                return;
+            }
+
+            controls.classList.remove('hidden');
+            actionBar.classList.remove('hidden');
+            badge.innerText = `${selectedImages.length}장`;
+
+            container.innerHTML = selectedImages.map((img, idx) => `
+                <div class="bg-paper border border-mist rounded-lg overflow-hidden p-2 space-y-2 relative group shadow-diagram">
+                    <div class="aspect-square bg-linen rounded flex items-center justify-center overflow-hidden">
+                        <img src="${img.src}" class="max-h-full max-w-full object-contain">
+                    </div>
+                    <div class="flex items-center justify-between text-[11px] text-ash pt-1">
+                        <span class="truncate max-w-[80px]">${idx + 1}. ${img.name}</span>
+                        <div class="flex gap-1">
+                            ${idx > 0 ? `<button onclick="moveImage(${idx}, -1)" class="hover:text-ink"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>` : ''}
+                            ${idx < selectedImages.length - 1 ? `<button onclick="moveImage(${idx}, 1)" class="hover:text-ink"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>` : ''}
+                            <button onclick="removeImage('${img.id}')" class="hover:text-rose-600"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function moveImage(idx, dir) {
+            const target = idx + dir;
+            if (target < 0 || target >= selectedImages.length) return;
+            const temp = selectedImages[idx];
+            selectedImages[idx] = selectedImages[target];
+            selectedImages[target] = temp;
+            updateImageUI();
+        }
+
+        function removeImage(id) {
+            selectedImages = selectedImages.filter(i => i.id !== id);
+            updateImageUI();
+        }
+
+        function clearAllImages() {
+            selectedImages = [];
+            updateImageUI();
+        }
+
+        async function generatePDF() {
+            if (!selectedImages.length) return;
+            showToast('PDF 생성을 진행하고 있습니다...', 'info');
+
+            const { jsPDF } = window.jspdf;
+            const pageSize = document.getElementById('pdf-size').value;
+            const orientationOpt = document.getElementById('pdf-orientation').value;
+            const margin = parseInt(document.getElementById('pdf-margin').value, 10) || 0;
+
+            let pdf = null;
+
+            for (let i = 0; i < selectedImages.length; i++) {
+                const imgData = selectedImages[i];
+                const img = new Image();
+                img.src = imgData.src;
+                await new Promise(r => img.onload = r);
+
+                const w = img.width;
+                const h = img.height;
+
+                let format = pageSize === 'fit' ? [w, h] : pageSize;
+                let orientation = orientationOpt === 'auto' ? (w > h ? 'landscape' : 'portrait') : orientationOpt;
+
+                if (i === 0) {
+                    pdf = new jsPDF({ orientation, unit: 'mm', format });
+                } else {
+                    pdf.addPage(format, orientation);
+                }
+
+                const pageW = pdf.internal.pageSize.getWidth();
+                const pageH = pdf.internal.pageSize.getHeight();
+                const printW = pageW - (margin * 2);
+                const printH = pageH - (margin * 2);
+
+                const ratio = Math.min(printW / w, printH / h);
+                const destW = w * ratio;
+                const destH = h * ratio;
+                const posX = margin + (printW - destW) / 2;
+                const posY = margin + (printH - destH) / 2;
+
+                pdf.addImage(imgData.src, 'JPEG', posX, posY, destW, destH);
+            }
+
+            saveAs(pdf.output('blob'), 'document_export.pdf');
+            showToast('PDF 다운로드가 완료되었습니다.', 'success');
+        }
+
+        /* -----------------------------------------------------------------
+           2. PDF TO IMAGE
+        ----------------------------------------------------------------- */
+        function handlePdfSelect(e) { handlePdfFiles(e.target.files); e.target.value = ''; }
+        function handlePdfFiles(files) {
+            const file = files[0];
+            if (!file || file.type !== 'application/pdf') return showToast('올바른 PDF 파일을 업로드하세요.', 'error');
+
+            document.getElementById('pdf-file-name').innerText = file.name;
+            const reader = new FileReader();
+            reader.onload = function() {
+                loadedPdfBuffer = this.result;
+                reRenderPdf();
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function reRenderPdf() {
+            if (!loadedPdfBuffer) return;
+
+            const loading = document.getElementById('pdf-loading');
+            const container = document.getElementById('pdf-preview-container');
+            const controls = document.getElementById('pdf-controls');
+            const actionBar = document.getElementById('pdf-action-bar');
+
+            renderedPdfPages = [];
+            container.innerHTML = '';
+            controls.classList.remove('hidden');
+            loading.classList.remove('hidden');
+            actionBar.classList.add('hidden');
+
+            try {
+                const pdfDoc = await pdfjsLib.getDocument({ data: loadedPdfBuffer.slice(0) }).promise;
+                const total = pdfDoc.numPages;
+                document.getElementById('pdf-page-count-badge').innerText = `${total} Pages`;
+
+                const scale = parseFloat(document.getElementById('export-scale').value) || 2.0;
+                const format = document.querySelector('input[name="export-format"]:checked').value;
+                const mime = format === 'png' ? 'image/png' : 'image/jpeg';
+
+                for (let i = 1; i <= total; i++) {
+                    const page = await pdfDoc.getPage(i);
+                    const viewport = page.getViewport({ scale });
+
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+
+                    await page.render({ canvasContext: ctx, viewport }).promise;
+
+                    const dataUrl = canvas.toDataURL(mime, 0.92);
+                    renderedPdfPages.push({ pageNum: i, dataUrl, format });
+
+                    const card = document.createElement('div');
+                    card.className = "bg-paper border border-mist rounded-lg overflow-hidden p-2 space-y-2 shadow-diagram";
+                    card.innerHTML = `
+                        <div class="aspect-[3/4] bg-linen rounded flex items-center justify-center overflow-hidden">
+                            <img src="${dataUrl}" class="max-h-full max-w-full object-contain">
+                        </div>
+                        <div class="flex items-center justify-between text-[11px] text-ash">
+                            <span class="font-medium">Page ${i}</span>
+                            <button onclick="downloadSinglePage(${i - 1})" class="text-twilight hover:text-signal-blue font-medium">저장</button>
+                        </div>
+                    `;
+                    container.appendChild(card);
+                }
+
+                loading.classList.add('hidden');
+                actionBar.classList.remove('hidden');
+                showToast(`총 ${total}개 페이지 변환이 완료되었습니다.`, 'success');
+            } catch (err) {
+                console.error(err);
+                loading.classList.add('hidden');
+                showToast('PDF 처리 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        function downloadSinglePage(idx) {
+            const page = renderedPdfPages[idx];
+            if (page) saveAs(page.dataUrl, `page_${page.pageNum}.${page.format}`);
+        }
+
+        async function downloadAllPdfImagesAsZip() {
+            if (!renderedPdfPages.length) return;
+            showToast('ZIP 압축 파일을 작성 중입니다...', 'info');
+
+            const zip = new JSZip();
+            const folder = zip.folder("pdf_pages");
+
+            renderedPdfPages.forEach(p => {
+                const base64 = p.dataUrl.split(',')[1];
+                folder.file(`page_${p.pageNum}.${p.format}`, base64, { base64: true });
+            });
+
+            const blob = await zip.generateAsync({ type: "blob" });
+            saveAs(blob, "extracted_pdf_images.zip");
+            showToast('압축 다운로드가 시작되었습니다.', 'success');
+        }
+
+        function clearPdf() {
+            loadedPdfBuffer = null;
+            renderedPdfPages = [];
+            document.getElementById('pdf-controls').classList.add('hidden');
+            document.getElementById('pdf-action-bar').classList.add('hidden');
+            document.getElementById('pdf-preview-container').innerHTML = '';
+        }
+
+        /* -----------------------------------------------------------------
+           3. MERGE PDFS
+        ----------------------------------------------------------------- */
+        function handleMergeSelect(e) { handleMergeFiles(e.target.files); e.target.value = ''; }
+        function handleMergeFiles(files) {
+            const valid = Array.from(files).filter(f => f.type === 'application/pdf');
+            if (!valid.length) return showToast('PDF 파일만 선택이 가능합니다.', 'error');
+
+            let loaded = 0;
+            valid.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function() {
+                    mergeFilesList.push({
+                        id: Math.random().toString(36).substring(2, 9),
+                        name: file.name,
+                        buffer: this.result
+                    });
+                    loaded++;
+                    if (loaded === valid.length) updateMergeUI();
+                };
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function updateMergeUI() {
+            const controls = document.getElementById('merge-controls');
+            const actionBar = document.getElementById('merge-action-bar');
+            const list = document.getElementById('merge-list');
+            const badge = document.getElementById('merge-count-badge');
+
+            if (!mergeFilesList.length) {
+                controls.classList.add('hidden');
+                actionBar.classList.add('hidden');
+                list.innerHTML = '';
+                return;
+            }
+
+            controls.classList.remove('hidden');
+            actionBar.classList.remove('hidden');
+            badge.innerText = `${mergeFilesList.length}개 파일`;
+
+            list.innerHTML = mergeFilesList.map((item, idx) => `
+                <div class="bg-linen border border-mist p-3 rounded-md flex items-center justify-between text-xs text-charcoal">
+                    <div class="flex items-center gap-2 truncate">
+                        <span class="font-medium text-ash">${idx + 1}.</span>
+                        <i data-lucide="file-text" class="w-4 h-4 text-ash"></i>
+                        <span class="truncate max-w-[300px]">${item.name}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        ${idx > 0 ? `<button onclick="moveMergeItem(${idx}, -1)" class="text-ash hover:text-ink"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>` : ''}
+                        ${idx < mergeFilesList.length - 1 ? `<button onclick="moveMergeItem(${idx}, 1)" class="text-ash hover:text-ink"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>` : ''}
+                        <button onclick="removeMergeItem('${item.id}')" class="text-ash hover:text-rose-600"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function moveMergeItem(idx, dir) {
+            const target = idx + dir;
+            if (target < 0 || target >= mergeFilesList.length) return;
+            const temp = mergeFilesList[idx];
+            mergeFilesList[idx] = mergeFilesList[target];
+            mergeFilesList[target] = temp;
+            updateMergeUI();
+        }
+
+        function removeMergeItem(id) {
+            mergeFilesList = mergeFilesList.filter(item => item.id !== id);
+            updateMergeUI();
+        }
+
+        function clearMergeList() {
+            mergeFilesList = [];
+            updateMergeUI();
+        }
+
+        async function executePdfMerge() {
+            if (mergeFilesList.length < 2) return showToast('최소 2개 이상의 PDF를 선택해야 병합할 수 있습니다.', 'error');
+            showToast('PDF 문서들을 병합하는 중입니다...', 'info');
+
+            try {
+                const mergedPdf = await PDFLib.PDFDocument.create();
+
+                for (const fileItem of mergeFilesList) {
+                    const pdf = await PDFLib.PDFDocument.load(fileItem.buffer);
+                    const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    copiedPages.forEach(page => mergedPdf.addPage(page));
+                }
+
+                const pdfBytes = await mergedPdf.save();
+                const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                saveAs(blob, 'merged_document.pdf');
+                showToast('PDF 병합이 완벽히 완료되었습니다.', 'success');
+            } catch (err) {
+                console.error(err);
+                showToast('PDF 병합 실패. 파일 손상 여부를 확인하세요.', 'error');
+            }
+        }
+
+        /* -----------------------------------------------------------------
+           4. SPLIT PDF
+        ----------------------------------------------------------------- */
+        function handleSplitSelect(e) { handleSplitFiles(e.target.files); e.target.value = ''; }
+        async function handleSplitFiles(files) {
+            const file = files[0];
+            if (!file || file.type !== 'application/pdf') return showToast('올바른 PDF 파일을 업로드하세요.', 'error');
+
+            document.getElementById('split-file-name').innerText = file.name;
+            const reader = new FileReader();
+            reader.onload = async function() {
+                splitPdfBuffer = this.result;
+                try {
+                    const pdfDoc = await PDFLib.PDFDocument.load(splitPdfBuffer);
+                    splitTotalPages = pdfDoc.getPageCount();
+                    document.getElementById('split-total-badge').innerText = `총 ${splitTotalPages}페이지`;
+                    document.getElementById('split-controls').classList.remove('hidden');
+                    document.getElementById('split-action-bar').classList.remove('hidden');
+                    showToast('PDF 분할 준비가 완료되었습니다.', 'info');
+                } catch(err) {
+                    showToast('PDF 파일을 읽을 수 없습니다.', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function toggleSplitMode() {
+            const mode = document.querySelector('input[name="split-mode"]:checked').value;
+            const rangeBox = document.getElementById('split-range-box');
+            if (mode === 'all') rangeBox.classList.add('hidden');
+            else rangeBox.classList.remove('hidden');
+        }
+
+        function clearSplit() {
+            splitPdfBuffer = null;
+            splitTotalPages = 0;
+            document.getElementById('split-controls').classList.add('hidden');
+            document.getElementById('split-action-bar').classList.add('hidden');
+        }
+
+        async function executePdfSplit() {
+            if (!splitPdfBuffer) return;
+            const mode = document.querySelector('input[name="split-mode"]:checked').value;
+
+            try {
+                const srcPdf = await PDFLib.PDFDocument.load(splitPdfBuffer);
+
+                if (mode === 'all') {
+                    showToast('각 페이지를 분할 파일로 생성하는 중입니다...', 'info');
+                    const zip = new JSZip();
+
+                    for (let i = 0; i < splitTotalPages; i++) {
+                        const newPdf = await PDFLib.PDFDocument.create();
+                        const [page] = await newPdf.copyPages(srcPdf, [i]);
+                        newPdf.addPage(page);
+                        const bytes = await newPdf.save();
+                        zip.file(`page_${i + 1}.pdf`, bytes);
+                    }
+
+                    const blob = await zip.generateAsync({ type: 'blob' });
+                    saveAs(blob, 'split_pages.zip');
+                    showToast('모든 페이지가 각각 분할되어 저장되었습니다.', 'success');
+                } else {
+                    const inputVal = document.getElementById('split-range-input').value.trim();
+                    if (!inputVal) return showToast('추출할 페이지 번호 범위(예: 1-3, 5)를 입력하세요.', 'error');
+
+                    const indices = parsePageRange(inputVal, splitTotalPages);
+                    if (!indices.length) return showToast('올바른 페이지 범위를 입력해 주세요.', 'error');
+
+                    showToast('지정된 페이지를 추출하는 중입니다...', 'info');
+                    const newPdf = await PDFLib.PDFDocument.create();
+                    const copiedPages = await newPdf.copyPages(srcPdf, indices);
+                    copiedPages.forEach(p => newPdf.addPage(p));
+
+                    const bytes = await newPdf.save();
+                    const blob = new Blob([bytes], { type: 'application/pdf' });
+                    saveAs(blob, 'extracted_range.pdf');
+                    showToast('페이지 추출 및 분할이 완료되었습니다.', 'success');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('분할 처리 중 오류가 발생했습니다.', 'error');
+            }
+        }
+
+        function parsePageRange(str, max) {
+            const pages = new Set();
+            const parts = str.split(',');
+
+            for (let part of parts) {
+                part = part.trim();
+                if (part.includes('-')) {
+                    const [start, end] = part.split('-').map(n => parseInt(n.trim(), 10));
+                    if (!isNaN(start) && !isNaN(end)) {
+                        for (let i = Math.max(1, start); i <= Math.min(max, end); i++) {
+                            pages.add(i - 1);
+                        }
+                    }
+                } else {
+                    const num = parseInt(part, 10);
+                    if (!isNaN(num) && num >= 1 && num <= max) {
+                        pages.add(num - 1);
+                    }
+                }
+            }
+            return Array.from(pages).sort((a, b) => a - b);
+        }
+
+        /* -----------------------------------------------------------------
+           TOAST NOTIFICATIONS
+        ----------------------------------------------------------------- */
+        function showToast(msg, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            let border = 'border-mist';
+            if (type === 'success') border = 'border-emerald-500';
+            else if (type === 'error') border = 'border-rose-500';
+
+            toast.className = `bg-paper text-graphite border ${border} px-4 py-3 rounded-lg shadow-diagram text-xs font-medium flex items-center gap-2.5 transition-all duration-300 transform translate-y-2 opacity-0`;
+            toast.innerHTML = `<span class="w-1.5 h-1.5 rounded-full ${type === 'success' ? 'bg-emerald-500' : type === 'error' ? 'bg-rose-500' : 'bg-signal-blue'}"></span><span>${msg}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+    </script>
+</body>
+</html>
