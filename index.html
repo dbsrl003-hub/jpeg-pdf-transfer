@@ -142,7 +142,7 @@
 
         <!-- ================= TOOL 1: IMAGE TO PDF ================= -->
         <section id="section-img2pdf" class="tool-section space-y-6">
-            <div id="img-dropzone" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
+            <div id="img-dropzone" onclick="document.getElementById('img-input').click()" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
                 <input type="file" id="img-input" multiple accept="image/jpeg, image/png, image/webp" class="hidden" onchange="handleImageSelect(event)">
                 <div class="space-y-3 pointer-events-none">
                     <div class="w-10 h-10 border border-mist rounded-full flex items-center justify-center mx-auto bg-linen group-hover:border-signal-blue transition">
@@ -150,7 +150,23 @@
                     </div>
                     <div>
                         <p class="text-sm font-medium text-graphite">이미지 파일 추가</p>
-                        <p class="text-xs text-ash mt-1">JPG, PNG, WebP 파일을 이곳에 끌어다 놓으세요</p>
+                        <p class="text-xs text-ash mt-1">클릭하거나 JPG, PNG, WebP 파일을 이곳에 끌어다 놓으세요</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div id="img-controls" class="hidden bg-paper p-6 rounded-xl border border-mist shadow-subtle space-y-5">
+                <div class="flex items-center justify-between border-b border-mist pb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-graphite tracking-wider">선택된 이미지</span>
+                        <span id="img-count-badge" class="text-[11px] bg-linen text-ash border border-mist px-2 py-0.5 rounded-md font-medium">0장</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="document.getElementById('img-input').click()" class="text-xs border border-twilight text-twilight px-3 py-1.5 rounded-md font-medium hover:bg-linen transition flex items-center gap-1 cursor-pointer">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> 이미지 추가
+                        </button>
+                        <button type="button" onclick="clearAllImages()" class="text-xs text-ash hover:text-ink transition">전체 삭제</button>
                     </div>
                 </div>
             </div>
@@ -212,7 +228,7 @@
 
         <!-- ================= TOOL 2: PDF TO IMAGE ================= -->
         <section id="section-pdf2img" class="tool-section hidden space-y-6">
-            <div id="pdf-dropzone" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
+            <div id="pdf-dropzone" onclick="document.getElementById('pdf-input').click()" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
                 <input type="file" id="pdf-input" accept="application/pdf" class="hidden" onchange="handlePdfSelect(event)">
                 <div class="space-y-3 pointer-events-none">
                     <div class="w-10 h-10 border border-mist rounded-full flex items-center justify-center mx-auto bg-linen group-hover:border-signal-blue transition">
@@ -220,7 +236,7 @@
                     </div>
                     <div>
                         <p class="text-sm font-medium text-graphite">PDF 파일 선택</p>
-                        <p class="text-xs text-ash mt-1">각 페이지를 이미지(JPG/PNG)로 변환합니다</p>
+                        <p class="text-xs text-ash mt-1">클릭하거나 PDF 파일을 이곳에 끌어다 놓으세요</p>
                     </div>
                 </div>
             </div>
@@ -282,7 +298,7 @@
 
         <!-- ================= TOOL 3: MERGE PDFS ================= -->
         <section id="section-merge" class="tool-section hidden space-y-6">
-            <div id="merge-dropzone" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
+            <div id="merge-dropzone" onclick="document.getElementById('merge-input').click()" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
                 <input type="file" id="merge-input" multiple accept="application/pdf" class="hidden" onchange="handleMergeSelect(event)">
                 <div class="space-y-3 pointer-events-none">
                     <div class="w-10 h-10 border border-mist rounded-full flex items-center justify-center mx-auto bg-linen group-hover:border-signal-blue transition">
@@ -290,7 +306,22 @@
                     </div>
                     <div>
                         <p class="text-sm font-medium text-graphite">병합할 PDF 파일 선택</p>
-                        <p class="text-xs text-ash mt-1">여러 PDF 파일을 하나로 합칩니다</p>
+                        <p class="text-xs text-ash mt-1">클릭하거나 여러 PDF 파일을 이곳에 끌어다 놓으세요</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="merge-controls" class="hidden bg-paper p-6 rounded-xl border border-mist shadow-subtle space-y-4">
+                <div class="flex items-center justify-between border-b border-mist pb-4">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-semibold text-graphite tracking-wider">파일 목록</span>
+                        <span id="merge-count-badge" class="text-[11px] bg-linen text-ash border border-mist px-2 py-0.5 rounded-md font-medium">0개</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="document.getElementById('merge-input').click()" class="text-xs border border-twilight text-twilight px-3 py-1.5 rounded-md font-medium hover:bg-linen transition flex items-center gap-1 cursor-pointer">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> PDF 추가
+                        </button>
+                        <button type="button" onclick="clearMergeList()" class="text-xs text-ash hover:text-ink transition">전체 삭제</button>
                     </div>
                 </div>
             </div>
@@ -322,7 +353,7 @@
 
         <!-- ================= TOOL 4: SPLIT PDF ================= -->
         <section id="section-split" class="tool-section hidden space-y-6">
-            <div id="split-dropzone" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
+            <div id="split-dropzone" onclick="document.getElementById('split-input').click()" class="bg-paper border border-dashed border-mist hover:border-signal-blue rounded-2xl p-10 sm:p-14 text-center cursor-pointer transition-all duration-200 shadow-diagram group">
                 <input type="file" id="split-input" accept="application/pdf" class="hidden" onchange="handleSplitSelect(event)">
                 <div class="space-y-3 pointer-events-none">
                     <div class="w-10 h-10 border border-mist rounded-full flex items-center justify-center mx-auto bg-linen group-hover:border-signal-blue transition">
@@ -330,7 +361,7 @@
                     </div>
                     <div>
                         <p class="text-sm font-medium text-graphite">분할할 PDF 파일 선택</p>
-                        <p class="text-xs text-ash mt-1">원하는 페이지를 추출하거나 각각 나눕니다</p>
+                        <p class="text-xs text-ash mt-1">클릭하거나 PDF 파일을 이곳에 끌어다 놓으세요</p>
                     </div>
                 </div>
             </div>
@@ -426,14 +457,21 @@
         // Generic Dropzone Setup
         function setupDropzone(id, callback) {
             const el = document.getElementById(id);
+            if (!el) return;
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
                 el.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); });
             });
             ['dragenter', 'dragover'].forEach(evt => el.addEventListener(evt, () => el.classList.add('drag-active')));
             ['dragleave', 'drop'].forEach(evt => el.addEventListener(evt, () => el.classList.remove('drag-active')));
             el.addEventListener('drop', e => callback(e.dataTransfer.files));
-            el.addEventListener('click', () => el.querySelector('input[type="file"]')?.click());
         }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            setupDropzone('img-dropzone', handleImageFiles);
+            setupDropzone('pdf-dropzone', handlePdfFiles);
+            setupDropzone('merge-dropzone', handleMergeFiles);
+            setupDropzone('split-dropzone', handleSplitFiles);
+        });
 
         /* -----------------------------------------------------------------
            1. IMAGE TO PDF
